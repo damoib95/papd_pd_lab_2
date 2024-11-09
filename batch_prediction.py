@@ -3,7 +3,7 @@ import time
 import shutil
 import pandas as pd
 from model import train_model, preprocess_data
-from sklearn.externals import joblib
+import joblib
 
 def run_batch():
     model = train_model()
