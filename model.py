@@ -11,6 +11,9 @@ from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from dotenv import load_dotenv
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 def load_environment_variables():
     load_dotenv()
@@ -24,8 +27,10 @@ def load_environment_variables():
 
 def preprocess_data(df, target_column=None, fit=False):
     
-    num_features = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    cat_features = df.select_dtypes(include=['object']).columns.tolist()
+    X = df.drop(columns=[target_column]) if target_column else df
+    y = df[target_column] if target_column else None
+    num_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
+    cat_features = X.select_dtypes(include=['object']).columns.tolist()
 
     numeric_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='mean')),
@@ -43,9 +48,6 @@ def preprocess_data(df, target_column=None, fit=False):
             ('cat', categorical_transformer, cat_features)
         ]
     )
-
-    X = df.drop(columns=[target_column]) if target_column else df
-    y = df[target_column] if target_column else None
 
     if fit:
         X_processed = preprocessor.fit_transform(X)
@@ -77,7 +79,7 @@ def train_and_optimize_model(X, y, model_name, trials=10):
 
     model = models.get(model_name)
 
-    if not model:
+    if model is None:
         raise ValueError(f"Modelo {model_name} no está soportado.")
 
     search = RandomizedSearchCV(model, param_grids[model_name], n_iter=trials, cv=3, verbose=2, random_state=42)
@@ -95,12 +97,18 @@ def save_model(model, model_path):
 def train_model():
     DATASET, TARGET, MODEL, TRIALS = load_environment_variables()
 
+    logging.info(f'Leyendo datos de entrenamiento {DATASET}')
     df = pd.read_parquet(DATASET)
     
+    logging.info(f'Iniciando preprocesamiento de datos')
+    logging.info(f'Variable objetivo: {TARGET}')
     X, y = preprocess_data(df, TARGET, fit=True)
 
+    logging.info(f'Entrenamiento y optimización de modelo: {MODEL}')
+    logging.info(f'Cantidad de modelos a probar: {TRIALS}')
     model = train_and_optimize_model(X, y, MODEL, trials=TRIALS)
 
+    logging.info('Guardando modelo')
     model_path = "models/trained_model.joblib"
     save_model(model, model_path)
 
