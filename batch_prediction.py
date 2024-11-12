@@ -2,7 +2,7 @@ import os
 import time
 import shutil
 import pandas as pd
-from model import train_model, preprocess_data
+from model import train_model
 import joblib
 import logging
 

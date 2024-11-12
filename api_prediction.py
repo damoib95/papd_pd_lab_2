@@ -1,8 +1,17 @@
 import os
+from dotenv import load_dotenv
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException, UploadFile, File
-from model import train_model, preprocess_data
+from pydantic import BaseModel
+from typing import List, Dict
+from model import train_model
+import logging
+
+class PredictionInput(BaseModel):
+    data: List[Dict]
+
+logging.basicConfig(level=logging.INFO)
 
 def run_api():
     app = FastAPI(
@@ -11,24 +20,29 @@ def run_api():
         version="1.0.0"
     )
 
+    logging.info('Iniciando modelamiento')
     model = train_model()
 
     @app.get('/health', summary='Health check', description='Verificar el estado de la API')
     async def health_check():
-        print('Health check')
+        logging.info('Health check')
         return {'status': 'ok'}
 
     @app.post('/predict', summary='Predicción', description='Realizar predicciones a partir de datos enviados')
-    async def predict(file: UploadFile = File(...)):
-        print('Petición de predicción recibida')
+    async def predict(input_data: PredictionInput):
+        logging.info('Petición de predicción recibida')
 
         try:
-            df = pd.read_parquet(file.file)
+            df = pd.DataFrame(input_data.data)
 
             if df.empty:
-                raise HTTPException(status_code=400, detail="El archivo Parquet está vacío.")
+                raise HTTPException(status_code=400, detail="Los datos JSON están vacíos.")
 
-            X_input, _ = preprocess_data(df, fit=False)
+            if os.path.exists('preprocessor.pkl'):
+                preprocessor = joblib.load('preprocessor.pkl')
+                X_input = preprocessor.transform(df)
+            else:
+                raise FileNotFoundError("El preprocesador entrenado no se encuentra.")
 
             predictions = model.predict_proba(X_input)
             
@@ -40,10 +54,12 @@ def run_api():
             return {"predictions": predictions_formatted}
 
         except Exception as e:
-            print(f'Error al realizar la predicción: {str(e)}')
+            logging.info(f'Error al realizar la predicción: {str(e)}')
             raise HTTPException(status_code=500, detail=str(e))
 
+    load_dotenv()
+    port = os.getenv("PORT", 8000)
     import uvicorn
-    print('Iniciando API...')
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    logging.info('Iniciando API...')
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
