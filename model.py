@@ -1,6 +1,7 @@
 import os
 import joblib
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
@@ -10,6 +11,7 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
 from dotenv import load_dotenv
 import logging
 
@@ -93,18 +95,32 @@ def train_model():
 
     logging.info(f'Leyendo datos de entrenamiento {DATASET}')
     df = pd.read_parquet(DATASET)
-    
+
     logging.info(f'Iniciando preprocesamiento de datos')
     logging.info(f'Variable objetivo: {TARGET}')
     logging.info(f'Guardando preprocesador')
     X, y = preprocess_data(df, TARGET)
 
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
     logging.info(f'Entrenamiento y optimización de modelo: {MODEL}')
     logging.info(f'Cantidad de modelos a probar: {TRIALS}')
-    model = train_and_optimize_model(X, y, MODEL, trials=TRIALS)
+    model = train_and_optimize_model(X_train, y_train, MODEL, trials=TRIALS)
 
     logging.info('Guardando modelo')
     model_path = "models/trained_model.joblib"
     save_model(model, model_path)
+
+    logging.info('Predicciones sobre conjunto de prueba')
+    y_pred = model.predict(X_test)
+
+    logging.info('Métricas de rendimiento')
+    accuracy = accuracy_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred, average='weighted')
+    cm = confusion_matrix(y_test, y_pred)
+
+    logging.info(f'Precisión: {accuracy:.4f}')
+    logging.info(f'F1-Score: {f1:.4f}')
+    logging.info(f'Matriz de Confusión: \n{cm}')
 
     return model
