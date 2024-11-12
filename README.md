@@ -12,7 +12,7 @@ En este laboratorio, se ha implementado un flujo de trabajo de **AutoML** que se
 Antes de comenzar, asegúrate de tener lo siguiente:
 
 - **Docker** instalado en tu máquina.
-- Un archivo de datos de entrada en el directorio local especificado como `localpath/data`.
+- Un archivo de datos de entrada en el directorio local especificado como `localpath/data` el cual será utilizado para entrenar y optimizar el modelo.
 - Los archivos de configuración `.env` para cada modo de ejecución.
 
 ---
@@ -35,7 +35,9 @@ Una vez que la imagen se haya construido, puedes ejecutar el contenedor en uno d
 
 #### Modo Batch Prediction
 
-En el modo **Batch Prediction**, el contenedor ejecutará el modelo en un lote de datos. Asegúrate de tener el archivo de configuración adecuado para este modo (`batch_prediction.env`), que debe contener las variables de entorno necesarias.
+En el modo **Batch Prediction**, el contenedor ejecutará el modelo en un lote de datos. En esta modalidad, el programa se queda a la espera de archivos nuevos ubicados en la ruta `/app/data/input` para aplicar el preprocesamiento y predicción del modelo optimizado. Una vez finaliza de procesar los archivos, los mueve a la ubicación `/app/data/input/processed` y busca en intervalos de 10 segundos por archivos nuevos. Si no se reciben archivos nuevos durante 60 segundos, entonces, el programa finaliza automáticamente.
+
+Asegúrate de tener el archivo de configuración adecuado para este modo (`batch_prediction.env`), que debe contener las variables de entorno necesarias.
 
 Para ejecutar el contenedor en modo Batch Prediction, usa el siguiente comando:
 
@@ -122,19 +124,3 @@ print(json.dumps(response.json(), indent=2))
 ```
 
 Esta solicitud devolverá una respuesta JSON con la predicción.
-
----
-
-### Finalización
-
-Para detener el contenedor Docker, puedes presionar `Ctrl+C` o ejecutar el siguiente comando:
-
-```bash
-docker stop <container_id>
-```
-
-Puedes obtener el `container_id` ejecutando:
-
-```bash
-docker ps
-```
