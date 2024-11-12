@@ -25,7 +25,7 @@ def load_environment_variables():
 
     return DATASET, TARGET, MODEL, TRIALS
 
-def preprocess_data(df, target_column=None, fit=False):
+def preprocess_data(df, target_column=None):
     
     X = df.drop(columns=[target_column]) if target_column else df
     y = df[target_column] if target_column else None
@@ -49,15 +49,9 @@ def preprocess_data(df, target_column=None, fit=False):
         ]
     )
 
-    if fit:
-        X_processed = preprocessor.fit_transform(X)
-        joblib.dump(preprocessor, 'preprocessor.pkl')
-    else:
-        if os.path.exists('preprocessor.pkl'):
-            preprocessor = joblib.load('preprocessor.pkl')
-            X_processed = preprocessor.transform(X)
-        else:
-            raise FileNotFoundError("El preprocesador entrenado no se encuentra. Por favor, entrene el modelo primero con fit=True.")
+    X_processed = preprocessor.fit_transform(X)
+    joblib.dump(preprocessor, 'preprocessor.pkl')
+
     return X_processed, y
 
 def train_and_optimize_model(X, y, model_name, trials=10):
@@ -85,14 +79,14 @@ def train_and_optimize_model(X, y, model_name, trials=10):
     search = RandomizedSearchCV(model, param_grids[model_name], n_iter=trials, cv=3, verbose=2, random_state=42)
     search.fit(X, y)
     
-    print(f"Mejores hiperparámetros para {model_name}: {search.best_params_}")
-    print(f"Mejor score para {model_name}: {search.best_score_}")
+    logging.info(f"Mejores hiperparámetros para {model_name}: {search.best_params_}")
+    logging.info(f"Mejor score para {model_name}: {search.best_score_}")
     
     return search.best_estimator_
 
 def save_model(model, model_path):
     joblib.dump(model, model_path)
-    print(f"Modelo guardado en: {model_path}")
+    logging.info(f"Modelo guardado en: {model_path}")
 
 def train_model():
     DATASET, TARGET, MODEL, TRIALS = load_environment_variables()
@@ -102,7 +96,8 @@ def train_model():
     
     logging.info(f'Iniciando preprocesamiento de datos')
     logging.info(f'Variable objetivo: {TARGET}')
-    X, y = preprocess_data(df, TARGET, fit=True)
+    logging.info(f'Guardando preprocesador')
+    X, y = preprocess_data(df, TARGET)
 
     logging.info(f'Entrenamiento y optimización de modelo: {MODEL}')
     logging.info(f'Cantidad de modelos a probar: {TRIALS}')

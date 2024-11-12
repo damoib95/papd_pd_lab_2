@@ -41,7 +41,11 @@ def run_batch():
             input_file = os.path.join(INPUT_FOLDER, file_name)
             input_df = pd.read_parquet(input_file)
 
-            X_input, _ = preprocess_data(input_df, target_column=None, fit=False)
+            if os.path.exists('preprocessor.pkl'):
+                preprocessor = joblib.load('preprocessor.pkl')
+                X_input = preprocessor.transform(input_df)
+            else:
+                raise FileNotFoundError("El preprocesador entrenado no se encuentra.")
 
             probabilities = model.predict_proba(X_input)
 
